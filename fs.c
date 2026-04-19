@@ -212,30 +212,155 @@ int umount_fs(char *disk_name)
     return 0;
 }
 
-//week 2 stubs 
-//each one returns -1 so accidental calls fail loudly  
+//fs_open —>open file fname for reading and writing
 int fs_open(char *fname)
 {
-    (void)fname;
-    return -1;  
-}
+    //reject if no FS is mounted
+    if (!fs.mounted) return -1;
+ 
+    //find the file in the directory
+    int dir_idx = -1;
+    for (int i = 0; i < MAX_FILES; i++) 
+    {
+        if (fs.dir[i].used && strcmp(fs.dir[i].name, fname) == 0) 
+        {
+            dir_idx = i;
+            break;
+        }
+    }
+ 
+    //fail if the file is not found
+    if (dir_idx == -1) return -1;
+ 
+    //find a free file descriptor slot
+    int fd = -1;
+    for (int i = 0; i < MAX_FILE_DESCRIPTORS; i++) 
+    {
+        if (!fs.fd_table[i].used) 
+        {
+            fd = i;
+            break;
+        }
+    }
+ 
+    //fail if all of the 32 descriptors are already open
+    if (fd == -1) return -1;
+ 
+    //initialize the file descriptor
+    fs.fd_table[fd].used      = 1;
+    fs.fd_table[fd].dir_index = dir_idx;
 
+    //the file pointer starts at beginning
+    fs.fd_table[fd].offset    = 0; 
+ 
+    return fd;
+}
+ 
+
+//fs_close, close teh file descriptor fildes
 int fs_close(int fildes)
 {
-    (void)fildes;
-    return -1; 
+    //reject if no FS is mounted
+    if (!fs.mounted) return -1;
+ 
+    //reject if fildes is out of range or not open
+    if (fildes < 0 || fildes >= MAX_FILE_DESCRIPTORS) return -1;
+    if (!fs.fd_table[fildes].used) return -1;
+ 
+    //mark the slot as free
+    fs.fd_table[fildes].used = 0;
+ 
+    return 0;
 }
 
+//fs_create ->create a new empty file named fname in the root directory
 int fs_create(char *fname)
 {
-    (void)fname;
-    return -1; 
+    //reject if there is no FS mounted
+    if (!fs.mounted) return -1;
+ 
+    //reject if the name is too long (the max 15 characters)
+    if (strlen(fname) > MAX_FILENAME) return -1;
+ 
+    int free_slot = -1;
+ 
+    for (int i = 0; i < MAX_FILES; i++) 
+    {
+        if (fs.dir[i].used) 
+        {
+            //fail if a file with this name already exists
+            if (strcmp(fs.dir[i].name, fname) == 0) return -1;
+        } else 
+        {
+            //remember the first free slot that we find
+            if (free_slot == -1) free_slot = i;
+        }
+    }
+ 
+    //fail if the directory is full (no free slot found)
+    if (free_slot == -1) return -1;
+ 
+    //initialize the new directory entry
+    memset(&fs.dir[free_slot], 0, sizeof(dir_entry_t));
+    strncpy(fs.dir[free_slot].name, fname, MAX_FILENAME);
+
+    //we guarantee the null terminator
+    fs.dir[free_slot].name[MAX_FILENAME] = '\0'; 
+    fs.dir[free_slot].used = 1;
+
+    //the file starts empty
+    fs.dir[free_slot].size = 0;        
+
+    //no data blocks yet
+    fs.dir[free_slot].first_block = FAT_FREE;  
+ 
+    return 0;
 }
 
+//fs_delete-> delete file fname and free all its data blocks
 int fs_delete(char *fname)
 {
-    (void)fname;
-    return -1;  
+    //reject if there is no FS mounted
+    if (!fs.mounted) return -1;
+ 
+    //find the file in the directory
+    int dir_idx = -1;
+    for (int i = 0; i < MAX_FILES; i++) 
+    {
+        if (fs.dir[i].used && strcmp(fs.dir[i].name, fname) == 0) 
+        {
+            dir_idx = i;
+            break;
+        }
+    }
+ 
+    //fail if the file is not found
+    if (dir_idx == -1) return -1;
+ 
+    //fail if the file is currently open (any fd points to it)
+    for (int i = 0; i < MAX_FILE_DESCRIPTORS; i++) 
+    {
+        if (fs.fd_table[i].used && fs.fd_table[i].dir_index == dir_idx) return -1;
+    }
+ 
+    //walk the FAT chain and free every data block the file owns
+    uint16_t block = fs.dir[dir_idx].first_block;
+    while (block != FAT_FREE && block != FAT_EOF) 
+    {
+        //save next before we overwrite
+        uint16_t next = fs.fat[block]; 
+
+        //we mark this block as free
+        fs.fat[block] = FAT_FREE;      
+
+        //we move to next block in chain
+        block = next;                  
+    }
+ 
+    //we clear the directory entry so the slot is available again
+    memset(&fs.dir[dir_idx], 0, sizeof(dir_entry_t));
+ 
+    return 0;
 }
 
 int fs_read(int fildes, void *buf, size_t nbyte)
@@ -250,10 +375,19 @@ int fs_write(int fildes, void *buf, size_t nbyte)
     return -1; 
 }
 
+//return the size in bytes of the file pointed to by fildes 
 int fs_get_filesize(int fildes)
 {
-    (void)fildes;
-    return -1;  
+    //we reject if there is no FS mounted
+    if (!fs.mounted) return -1;
+ 
+    //we reject if fildes is out of range or not open
+    if (fildes < 0 || fildes >= MAX_FILE_DESCRIPTORS) return -1;
+    if (!fs.fd_table[fildes].used) return -1;
+ 
+    //we look up the directory entry via the fd and return its size
+    int dir_idx = fs.fd_table[fildes].dir_index;
+    return (int)fs.dir[dir_idx].size;
 }
 
 int fs_lseek(int fildes, off_t offset)
