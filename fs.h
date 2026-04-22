@@ -6,8 +6,8 @@
 #include <sys/types.h>
 #include "disk.h"
 
-// 4096 bytes per block
-#define BLOCK_SIZE DISK_BLOCK_SIZE   
+//4096 bytes per block
+//#define BLOCK_SIZE 4096  
 
 //the total number of blocks on the virtual disk
 #define DISK_BLOCKS 8192
@@ -35,7 +35,7 @@
 #define MAX_FILE_SIZE (NUM_DATA_BLOCKS * BLOCK_SIZE)
 
 //free data block
-#define FAT_FREE 0x0000u 
+#define FAT_FREE 0xFFFEu 
 
 //last data block in the file chain 
 #define FAT_EOF 0xFFFFu 
@@ -179,4 +179,4 @@ int  fs_lseek(int fildes, off_t offset);
 //shrink file fildes to length bytes;frees now-unused data blocks; returns 0 or -1
 int  fs_truncate(int fildes, off_t length);
 
-#endif //FS_H 
+#endif 

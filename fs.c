@@ -15,7 +15,7 @@ static int flush_metadata(void)
 {
     //scratch buffer — block_write requires a full 4096-byte block every time
     //we memset to 0 first so unused bytes on disk are always clean zeros
-    uint8_t buf[BLOCK_SIZE];
+    char buf[BLOCK_SIZE];
 
     //we write superblock to block 0
     memset(buf, 0, BLOCK_SIZE);
@@ -26,7 +26,7 @@ static int flush_metadata(void)
     }
 
     //write FAT to blocks 1 and 2
-    uint8_t *fat_bytes = (uint8_t *)fs.fat;
+    char *fat_bytes = (char *)fs.fat;
     for (int i = 0; i < FAT_BLOCKS; i++) {
         memset(buf, 0, BLOCK_SIZE);
         memcpy(buf, fat_bytes + i * BLOCK_SIZE, BLOCK_SIZE);
@@ -51,7 +51,7 @@ static int flush_metadata(void)
 static int load_metadata(void)
 {
     //we scratch the buffer for reading one block at a time
-    uint8_t buf[BLOCK_SIZE];
+    char buf[BLOCK_SIZE];
 
     //we read superblock from block 0
     if (block_read(SUPERBLOCK_BLOCK, buf) < 0) {
@@ -67,7 +67,7 @@ static int load_metadata(void)
     }
 
     //we read FAT from blocks 1 and 2
-    uint8_t *fat_bytes = (uint8_t *)fs.fat;
+    char *fat_bytes = (char *)fs.fat;
     for (int i = 0; i < FAT_BLOCKS; i++) {
         if (block_read(FAT_BLOCK_START + i, buf) < 0) {
             fprintf(stderr, "fs: failed to read FAT block %d\n", i);
@@ -391,7 +391,7 @@ int fs_read(int fildes, void *buf, size_t nbyte)
         block = fs.fat[block];  
     }
  
-    uint8_t disk_buf[BLOCK_SIZE];
+    char disk_buf[BLOCK_SIZE];
     size_t bytes_read = 0;
     size_t bytes_left = nbyte;
     
@@ -407,7 +407,7 @@ int fs_read(int fildes, void *buf, size_t nbyte)
         size_t to_copy   = (bytes_left < available) ? bytes_left : available;
  
         //we copy from the block into the caller's buffer
-        memcpy((uint8_t *)buf + bytes_read, disk_buf + block_offset, to_copy);
+        memcpy((char *)buf + bytes_read, disk_buf + block_offset, to_copy);
  
         bytes_read += to_copy;
         bytes_left -= to_copy;
@@ -477,7 +477,7 @@ int fs_write(int fildes, void *buf, size_t nbyte)
         block = fs.fat[block];
     }
  
-    uint8_t disk_buf[BLOCK_SIZE];
+    char disk_buf[BLOCK_SIZE];
     size_t bytes_written = 0;
     size_t bytes_left = nbyte;
     int block_offset = (int)(offset % BLOCK_SIZE);
@@ -515,7 +515,7 @@ int fs_write(int fildes, void *buf, size_t nbyte)
         size_t to_copy = (bytes_left < available) ? bytes_left : available;
  
         //we copy from caller's buffer into the block
-        memcpy(disk_buf + block_offset, (uint8_t *)buf + bytes_written, to_copy);
+        memcpy(disk_buf + block_offset, (char *)buf + bytes_written, to_copy);
  
         //we write the modified block back to disk
         if (block_write(DATA_BLOCK_START + block, disk_buf) < 0) break;
