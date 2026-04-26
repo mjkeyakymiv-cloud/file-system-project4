@@ -53,7 +53,7 @@ static void *worker(void *arg)
     //mount the disk so we can access the file system
     failures += check("thread: mount_fs", mount_fs(DISK_NAME), 0);
 
-    printf("\n=== Step 3: Re-open and read from various locations ===\n");
+    printf("\n-Step 3: Re-open and read from various locations\n");
 
     //we open the file again ->the file pointer resets to 0
     fd = fs_open(FILE_A);
@@ -98,7 +98,7 @@ static void *worker(void *arg)
 
     failures += check("fs_close after reads", fs_close(fd), 0);
 
-    printf("\n=== Step 4: Copy fileA to fileB ===\n");
+    printf("\n-Step 4: Copy fileA to fileB\n");
 
     //we create the destination file
     failures += check("fs_create fileB", fs_create(FILE_B), 0);
@@ -131,7 +131,7 @@ static void *worker(void *arg)
     failures += check("fs_close fileA", fs_close(fd),  0);
     failures += check("fs_close fileB", fs_close(fd2), 0);
 
-    printf("\n=== Step 5: Delete original file and verify directory ===\n");
+    printf("\nStep 5: Delete original file and verify directoryn");
 
     //fs_delete should free fileA's data blcks and remove its directory entry
     failures += check("fs_delete fileA", fs_delete(FILE_A), 0);
@@ -160,7 +160,7 @@ static void *worker(void *arg)
     hexdump("root directory after deletion (block 3)", 3 * BLOCK_SIZE, 128);
     hexdump("FAT after deletion (block 1)", 1 * BLOCK_SIZE, 64);
 
-    printf("\n=== Step 6: Unmount and remount to verify persistence ===\n");
+    printf("\n-Step 6: Unmount and remount to verify persistencen");
 
     //umount_fs flushes all changes to disk
     failures += check("umount_fs", umount_fs(DISK_NAME), 0);
@@ -190,7 +190,7 @@ int main(void)
     int failures = 0;
     int fd, ret;
 
-    printf("\n=== Step 1: Create disk volume ===\n");
+    printf("\n-Step 1: Create disk volume \n");
 
     //make_fs creates the virtual disk file and formats it with an empty FS
     failures += check("make_fs", make_fs(DISK_NAME), 0);
@@ -201,7 +201,7 @@ int main(void)
     //mount_fs loads the metadata into RAM so file operations can run
     failures += check("mount_fs", mount_fs(DISK_NAME), 0);
 
-    printf("\n=== Step 2: Create a file and write data ===\n");
+    printf("\n-Step 2: Create a file and write data\n");
 
     //fs_create adds a new empty entry to the root directory
     failures += check("fs_create fileA", fs_create(FILE_A), 0);
@@ -239,7 +239,7 @@ int main(void)
     hexdump("root directory after write (block 3)", 3 * BLOCK_SIZE, 64);
     hexdump("FAT after write (block 1)", 1 * BLOCK_SIZE, 32);
 
-    printf("\n=== Step 3-6: Spawning worker thread ===\n");
+    printf("\n-Step 3-6: Spawning worker thread\n");
 
     //create the thread —>it will mount the disk and do all remaining work
     pthread_t thread;
@@ -260,7 +260,7 @@ int main(void)
         free(thread_ret);
     }
 
-    printf("\n=== Results ===\n");
+    printf("\n-Results\n");
     if (failures == 0)
     {
         printf("All tests passed.\n\n");
